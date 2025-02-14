@@ -1,11 +1,17 @@
 const express = require("express");
 const app = express();
 
-
-//packages 
+//packages
+const cookieParser = require("cookie-parser");
 const cors = require("cors");
 require("dotenv").config();
 
+//routes
+const userRoutes = require("./routes/user");
+
+// middleware
+app.use(express.json());
+app.use(cookieParser());
 
 //Connection to Database
 const connectDB = require("./config/database");
@@ -18,3 +24,12 @@ app.listen(PORT, () => {
 
 //Connections
 connectDB();
+
+// mount route
+app.use("/api/v1/auth", userRoutes);
+
+// default Route
+
+app.get("/", (req, res) => {
+  res.send("Hello World!");
+});
