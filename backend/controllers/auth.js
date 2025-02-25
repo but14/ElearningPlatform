@@ -259,3 +259,90 @@ exports.login = async (req, res) => {
     });
   }
 };
+
+// ==========CHANGE PASSWORD =================
+exports.changePassword = async (req, res) => {
+  try {
+    // extract data
+    const { oldPassword, newPassword, confirmPassword } = req.body;
+
+    // validation
+    if (!oldPassword || !newPassword || !confirmPassword) {
+      return res.status(403).json({
+        success: false,
+        message: "Vui long dien day du thong tin",
+      });
+    }
+
+    //get user
+    const userDetails = await User.findById(req.user.id);
+
+    // validate old password entered correct or not
+    const isPasswordMatch = await bcrypt.compare(
+      oldPassword,
+      userDetails.password
+    );
+
+    // if old password is not match
+    if (!isPasswordMatch) {
+      return res.status(403).json({
+        success: false,
+        message: "Sai mat khau cua ban. Vui long nhap lai.",
+      });
+    }
+
+    // check both password are matched
+    if (newPassword !== confirmPassword) {
+      return res.status(403).json({
+        success: false,
+        message: "Mat khau moi khong trung khop. Vui long nhap lai.",
+      });
+    }
+
+    // hash new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // update password in DB
+    const updatedUserDetails = await User.findByIdAndUpdate(
+      req.user.id,
+      {
+        password: hashedPassword,
+      },
+      {
+        new: true,
+      }
+    );
+    //send email
+    try {
+      const emailResponse = await mailSender(
+        updatedUserDetails.email,
+        "Mat khau cua ban da cap nhat thanh cong",
+        passwordUpdated(
+          updatedUserDetails.email,
+          `Password updated successfully for ${updatedUserDetails.firstName} ${updatedUserDetails.lastName}`
+        )
+      );
+      // console.log(emailResponse);
+    } catch (error) {
+      console.error("Loi xay ra khi gui email", error);
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        message: "Xay ra loi khi gui email",
+      });
+    }
+    // return success response
+    res.status(200).json({
+      success: true,
+      mesage: "Password changed successfully",
+    });
+  } catch (error) {
+    console.log("Xay ra loi khi thay doi mat khau");
+    console.log(error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      message: "Xay ra loi khi thay doi mat khau",
+    });
+  }
+};
